@@ -18,7 +18,15 @@ Event OnWorkshopObjectDestroyed(ObjectReference akActionRef)
   Die()
 EndEvent
 
-; TODO: This code is dense enough to warrant some comments
+; Coming into a OnDataInternal event we can speed things up by splitting things
+; into three cases. They are:
+;  * There are no previous values in Values[]. Just add the received value to it
+;  * There is one value in Values[] and it came from the same transmitter as the
+;    value we just received. Update the value and time in the struct we already
+;    have.
+;  * We get a value from a new transmitter while holding values from other
+;    transmitters. Walk through Values[] and insert the new struct in the right
+;    place with respect to the Time value.
 Event DataWire:Transmitter.OnDataInternal(DataWire:Transmitter Source, \
     Var[] Args)
   int NewValue = 0
@@ -47,17 +55,7 @@ Event DataWire:Transmitter.OnDataInternal(DataWire:Transmitter Source, \
     EndIf
   EndIf
 
-  If (Values.Length)
-    NewValue = Values[0].Value
-  EndIf
-
-  If (Value != NewValue)
-    Value = NewValue
-
-    Var[] Args2 = new Var[1]
-    Args2[0] = Value
-    SendCustomEvent("OnData", Args2)
-  EndIf
+  UpdateValue()
 EndEvent
 
 Event ObjectReference.OnWorkshopMode(ObjectReference akSender, bool aStart)
@@ -84,8 +82,6 @@ Event ObjectReference.OnWorkshopMode(ObjectReference akSender, bool aStart)
   ; phantom value in the Values array. The fix? Simple, when leaving workshop
   ; mode verify that any value we're currently holding came from a transmitter
   ; we're still connected to.
-  ; TODO: We should probably be issuing an OnData event here. Some refactoring
-  ; is needed to do that without needlessly cluttering things up.
   i = Values.Length - 1
   While (i >= 0)
     If (!Values[i].Source.HasSharedPowerGrid(Self))
@@ -93,7 +89,25 @@ Event ObjectReference.OnWorkshopMode(ObjectReference akSender, bool aStart)
     EndIf
     i -= 1
   EndWhile
+
+  UpdateValue()
 EndEvent
+
+Function UpdateValue()
+  int CurrentValue = 0
+  If (Values.Length)
+    CurrentValue = Values[0].Value
+  EndIf
+
+  If (CurrentValue == Value)
+    Return
+  EndIf
+
+  Value = CurrentValue
+  Var[] Args = New Var[1]
+  Args[0] = Value
+  SendCustomEvent("OnData", Args)
+EndFunction
 
 Function Die()
   UnregisterForAllCustomEvents()
