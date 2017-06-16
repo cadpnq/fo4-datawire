@@ -18,6 +18,7 @@ Event OnWorkshopObjectDestroyed(ObjectReference akActionRef)
   Die()
 EndEvent
 
+; TODO: This code is dense enough to warrant some comments
 Event DataWire:Transmitter.OnDataInternal(DataWire:Transmitter Source, \
     Var[] Args)
   int NewValue = 0
@@ -25,7 +26,7 @@ Event DataWire:Transmitter.OnDataInternal(DataWire:Transmitter Source, \
   DataWire:Common:Data Data = Args[0] as DataWire:Common:Data
   If (Values.Length == 0 && Data.Enabled)
     Values.Add(Data)
-  ElseIf (Values.Length == 1 && Data.Source == Source)
+  ElseIf (Values.Length == 1 && Data.Source == Values[0].Source)
     If (!Data.Enabled)
       Values.Remove(0)
     Else
@@ -33,22 +34,16 @@ Event DataWire:Transmitter.OnDataInternal(DataWire:Transmitter Source, \
       Values[0].Time = Data.Time
     EndIf
   Else
-    int i = Values.FindStruct("Source", Source)
+    int i = Values.FindStruct("Source", Data.Source)
     If (i > -1)
       Values.Remove(i)
     EndIf
     If (Data.Enabled)
       i = 0
-      While (i < Values.Length)
-        If (Values[i].Time < Data.Time)
-          Values.Insert(Data, i)
-        EndIf
+      While (i < Values.Length && Values[i].Time > Data.Time)
         i += 1
-
-        If (i == Values.Length)
-          Values.Add(Data)
-        EndIf
       EndWhile
+      Values.Insert(Data, i)
     EndIf
   EndIf
 
