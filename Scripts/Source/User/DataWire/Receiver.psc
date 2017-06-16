@@ -86,7 +86,7 @@ Event ObjectReference.OnWorkshopMode(ObjectReference akSender, bool aStart)
   ; we're still connected to.
   ; TODO: We should probably be issuing an OnData event here. Some refactoring
   ; is needed to do that without needlessly cluttering things up.
-  i = Values.Length
+  i = Values.Length - 1
   While (i >= 0)
     If (!Values[i].Source.HasSharedPowerGrid(Self))
       Values.Remove(i)
