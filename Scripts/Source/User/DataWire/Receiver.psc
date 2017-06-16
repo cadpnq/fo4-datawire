@@ -83,6 +83,21 @@ Event ObjectReference.OnWorkshopMode(ObjectReference akSender, bool aStart)
     EndIf
     i += 1
   EndWhile
+
+  ; it is possible that we'll receive data from a transmitter and then the user
+  ; removes the wire connecting us to them. That would result in us having a
+  ; phantom value in the Values array. The fix? Simple, when leaving workshop
+  ; mode verify that any value we're currently holding came from a transmitter
+  ; we're still connected to.
+  ; TODO: We should probably be issuing an OnData event here. Some refactoring
+  ; is needed to do that without needlessly cluttering things up.
+  i = Values.Length
+  While (i >= 0)
+    If (!Values[i].Source.HasSharedPowerGrid(Self))
+      Values.Remove(i)
+    EndIf
+    i -= 1
+  EndWhile
 EndEvent
 
 Function Die()
