@@ -18,20 +18,17 @@ Event OnWorkshopObjectDestroyed(ObjectReference akActionRef)
   Die()
 EndEvent
 
-; Coming into a OnDataInternal event we can speed things up by splitting things
-; into three cases. They are:
+Event DataWire:Transmitter.OnDataInternal(DataWire:Transmitter Source, Var[] Args)
+  ProcessData(Args[0] as DataWire:Common:Data)
+EndEvent
+
+; Coming into a OnDataInternal event we can speed things up by splitting things into three cases. They are:
 ;  * There are no previous values in Values[]. Just add the received value to it
-;  * There is one value in Values[] and it came from the same transmitter as the
-;    value we just received. Update the value and time in the struct we already
-;    have.
-;  * We get a value from a new transmitter while holding values from other
-;    transmitters. Walk through Values[] and insert the new struct in the right
-;    place with respect to the Time value.
-Event DataWire:Transmitter.OnDataInternal(DataWire:Transmitter Source, \
-    Var[] Args)
+;  * There is one value in Values[] and it came from the same transmitter as the value we just received. Update the value and time in the struct we already have.
+;  * We get a value from a new transmitter while holding values from other transmitters. Walk through Values[] and insert the new struct in the right place with respect to the Time value.
+Function ProcessData(DataWire:Common:Data Data)
   int NewValue = 0
 
-  DataWire:Common:Data Data = Args[0] as DataWire:Common:Data
   If (Values.Length == 0 && Data.Enabled)
     Values.Add(Data)
   ElseIf (Values.Length == 1 && Data.Source == Values[0].Source)
@@ -56,7 +53,7 @@ Event DataWire:Transmitter.OnDataInternal(DataWire:Transmitter Source, \
   EndIf
 
   UpdateValue()
-EndEvent
+EndFunction
 
 Event ObjectReference.OnWorkshopMode(ObjectReference akSender, bool aStart)
   If (aStart)
@@ -66,22 +63,18 @@ Event ObjectReference.OnWorkshopMode(ObjectReference akSender, bool aStart)
   UnregisterForAllCustomEvents()
   int i = 0
   DataWire:Transmitter Transmitter
-  ObjectReference[] Transmitters = \
-    GetWorkshop().GetRefsLinkedToMe(dw_transmitter)
+  ObjectReference[] Transmitters = GetWorkshop().GetRefsLinkedToMe(dw_transmitter)
 
   While (i < Transmitters.Length)
     Transmitter = Transmitters[i] as DataWire:Transmitter
     If (Transmitter.HasSharedPowerGrid(Self))
       RegisterForCustomEvent(Transmitter, "OnDataInternal")
+      ProcessData(Transmitter.Data)
     EndIf
     i += 1
   EndWhile
 
-  ; it is possible that we'll receive data from a transmitter and then the user
-  ; removes the wire connecting us to them. That would result in us having a
-  ; phantom value in the Values array. The fix? Simple, when leaving workshop
-  ; mode verify that any value we're currently holding came from a transmitter
-  ; we're still connected to.
+  ; it is possible that we'll receive data from a transmitter and then the user removes the wire connecting us to them. That would result in us having a phantom value in the Values array. The fix? Simple, when leaving workshop mode verify that any value we're currently holding came from a transmitter we're still connected to.
   i = Values.Length - 1
   While (i >= 0)
     If (!Values[i].Source.HasSharedPowerGrid(Self))

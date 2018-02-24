@@ -6,7 +6,7 @@ CustomEvent OnDataInternal
 
 Keyword Property dw_transmitter Auto Const
 
-int _Value
+int _Value = 0
 int Property Value
   int Function Get()
     Return _Value
@@ -28,13 +28,15 @@ bool Property Enabled
   EndFunction
 EndProperty
 
+DataWire:Common:Data Property Data Auto
+
 Event Oninit()
+  Data = New DataWire:Common:Data
   SetLinkedRef(GetWorkshop(), dw_transmitter)
 EndEvent
 
 Function SendEvent()
   Var[] Args = new Var[1]
-  DataWire:Common:Data Data = New DataWire:Common:Data
   Data.Value = _Value
   Data.Time = Utility.GetCurrentGameTime()
   Data.Source = Self
